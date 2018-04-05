@@ -1,18 +1,18 @@
 var router = require('express').Router();
 var mongoose = require('mongoose');
-var Article = mongoose.model('Article');
+var Campaign = mongoose.model('Campaign');
 var Comment = mongoose.model('Comment');
 var User = mongoose.model('User');
 var auth = require('../auth');
 
-// Preload article objects on routes with ':article'
-router.param('article', function(req, res, next, slug) {
-  Article.findOne({ slug: slug})
+// Preload campaign objects on routes with ':Campaign'
+router.param('campaign', function(req, res, next, slug) {
+    Campaign.findOne({ slug: slug})
     .populate('author')
-    .then(function (article) {
-      if (!article) { return res.sendStatus(404); }
+    .then(function (campaign) {
+      if (!campaign) { return res.sendStatus(404); }
 
-      req.article = article;
+      req.campaign = campaign;
 
       return next();
     }).catch(next);
@@ -63,24 +63,24 @@ router.get('/', auth.optional, function(req, res, next) {
     }
 
     return Promise.all([
-      Article.find(query)
+        Campaign.find(query)
         .limit(Number(limit))
         .skip(Number(offset))
         .sort({createdAt: 'desc'})
         .populate('author')
         .exec(),
-      Article.count(query).exec(),
+        Campaign.count(query).exec(),
       req.payload ? User.findById(req.payload.id) : null,
     ]).then(function(results){
-      var articles = results[0];
-      var articlesCount = results[1];
+      var campaigns = results[0];
+      var campaignsCount = results[1];
       var user = results[2];
 
       return res.json({
-        articles: articles.map(function(article){
-          return article.toJSONFor(user);
+          campaigns: campaigns.map(function(campaign){
+          return campaign.toJSONFor(user);
         }),
-        articlesCount: articlesCount
+          campaignsCount: campaignsCount
       });
     });
   }).catch(next);
@@ -102,21 +102,22 @@ router.get('/feed', auth.required, function(req, res, next) {
     if (!user) { return res.sendStatus(401); }
 
     Promise.all([
-      Article.find({ author: {$in: user.following}})
+        Campaign.find({ author: {$in: user.following}})
         .limit(Number(limit))
         .skip(Number(offset))
         .populate('author')
         .exec(),
-      Article.count({ author: {$in: user.following}})
+        Campaign.count({ author: {$in: user.following}})
     ]).then(function(results){
-      var articles = results[0];
-      var articlesCount = results[1];
+      var campaigns = results[0];
+      var campaignsCount = results[1];
 
       return res.json({
-        articles: articles.map(function(article){
-          return article.toJSONFor(user);
+          campaigns: campaigns.map(function(campaign){
+              console.log(campaign.toJSONFor(user));
+          return campaign.toJSONFor(user);
         }),
-        articlesCount: articlesCount
+          campaignsCount: campaignsCount
       });
     }).catch(next);
   });
@@ -126,51 +127,55 @@ router.post('/', auth.required, function(req, res, next) {
   User.findById(req.payload.id).then(function(user){
     if (!user) { return res.sendStatus(401); }
 
-    var article = new Article(req.body.article);
+    var campaign = new Campaign(req.body.campaign);
 
-    article.author = user;
+      campaign.author = user;
 
-    return article.save().then(function(){
-      console.log(article.author);
-      return res.json({article: article.toJSONFor(user)});
+    return campaign.save().then(function(){
+      console.log(campaign.author);
+      return res.json({campaign: campaign.toJSONFor(user)});
     });
   }).catch(next);
 });
 
-// return a article
-router.get('/:article', auth.optional, function(req, res, next) {
+// return a campaign
+router.get('/:campaign', auth.optional, function(req, res, next) {
   Promise.all([
     req.payload ? User.findById(req.payload.id) : null,
-    req.article.populate('author').execPopulate()
+    req.campaign.populate('author').execPopulate()
   ]).then(function(results){
     var user = results[0];
 
-    return res.json({article: req.article.toJSONFor(user)});
+    return res.json({campaign: req.campaign.toJSONFor(user)});
   }).catch(next);
 });
 
-// update article
-router.put('/:article', auth.required, function(req, res, next) {
+// update campaign
+router.put('/:campaign', auth.required, function(req, res, next) {
   User.findById(req.payload.id).then(function(user){
-    if(req.article.author._id.toString() === req.payload.id.toString()){
-      if(typeof req.body.article.title !== 'undefined'){
-        req.article.title = req.body.article.title;
+    if(req.campaign.author._id.toString() === req.payload.id.toString()){
+      if(typeof req.body.campaign.title !== 'undefined'){
+        req.campaign.title = req.body.campaign.title;
       }
 
-      if(typeof req.body.article.description !== 'undefined'){
-        req.article.description = req.body.article.description;
+      if(typeof req.body.campaign.description !== 'undefined'){
+        req.campaign.description = req.body.campaign.description;
       }
 
-      if(typeof req.body.article.body !== 'undefined'){
-        req.article.body = req.body.article.body;
+      if(typeof req.body.campaign.body !== 'undefined'){
+        req.campaign.body = req.body.campaign.body;
       }
 
-      if(typeof req.body.article.tagList !== 'undefined'){
-        req.article.tagList = req.body.article.tagList
+      if(typeof req.body.campaign.tagList !== 'undefined'){
+        req.campaign.tagList = req.body.campaign.tagList
       }
 
-      req.article.save().then(function(article){
-        return res.json({article: article.toJSONFor(user)});
+        if(typeof req.body.campaign.amount !== 'undefined'){
+            req.campaign.amount = req.body.campaign.amount
+        }
+
+      req.campaign.save().then(function(campaign){
+        return res.json({campaign: campaign.toJSONFor(user)});
       }).catch(next);
     } else {
       return res.sendStatus(403);
@@ -178,13 +183,13 @@ router.put('/:article', auth.required, function(req, res, next) {
   });
 });
 
-// delete article
-router.delete('/:article', auth.required, function(req, res, next) {
+// delete campaign
+router.delete('/:campaign', auth.required, function(req, res, next) {
   User.findById(req.payload.id).then(function(user){
     if (!user) { return res.sendStatus(401); }
 
-    if(req.article.author._id.toString() === req.payload.id.toString()){
-      return req.article.remove().then(function(){
+    if(req.campaign.author._id.toString() === req.payload.id.toString()){
+      return req.campaign.remove().then(function(){
         return res.sendStatus(204);
       });
     } else {
@@ -193,40 +198,40 @@ router.delete('/:article', auth.required, function(req, res, next) {
   }).catch(next);
 });
 
-// Favorite an article
-router.post('/:article/favorite', auth.required, function(req, res, next) {
-  var articleId = req.article._id;
+// Favorite an campaign
+router.post('/:campaign/favorite', auth.required, function(req, res, next) {
+  var campaignId = req.campaign._id;
 
   User.findById(req.payload.id).then(function(user){
     if (!user) { return res.sendStatus(401); }
 
-    return user.favorite(articleId).then(function(){
-      return req.article.updateFavoriteCount().then(function(article){
-        return res.json({article: article.toJSONFor(user)});
+    return user.favorite(campaignId).then(function(){
+      return req.campaign.updateFavoriteCount().then(function(campaign){
+        return res.json({campaign: campaign.toJSONFor(user)});
       });
     });
   }).catch(next);
 });
 
-// Unfavorite an article
-router.delete('/:article/favorite', auth.required, function(req, res, next) {
-  var articleId = req.article._id;
+// Unfavorite an campaign
+router.delete('/:campaign/favorite', auth.required, function(req, res, next) {
+  var campaignId = req.campaign._id;
 
   User.findById(req.payload.id).then(function (user){
     if (!user) { return res.sendStatus(401); }
 
-    return user.unfavorite(articleId).then(function(){
-      return req.article.updateFavoriteCount().then(function(article){
-        return res.json({article: article.toJSONFor(user)});
+    return user.unfavorite(campaignId).then(function(){
+      return req.campaign.updateFavoriteCount().then(function(campaign){
+        return res.json({campaign: campaign.toJSONFor(user)});
       });
     });
   }).catch(next);
 });
 
-// return an article's comments
-router.get('/:article/comments', auth.optional, function(req, res, next){
+// return an campaign's comments
+router.get('/:campaign/comments', auth.optional, function(req, res, next){
   Promise.resolve(req.payload ? User.findById(req.payload.id) : null).then(function(user){
-    return req.article.populate({
+    return req.campaign.populate({
       path: 'comments',
       populate: {
         path: 'author'
@@ -236,8 +241,8 @@ router.get('/:article/comments', auth.optional, function(req, res, next){
           createdAt: 'desc'
         }
       }
-    }).execPopulate().then(function(article) {
-      return res.json({comments: req.article.comments.map(function(comment){
+    }).execPopulate().then(function(campaign) {
+      return res.json({comments: req.campaign.comments.map(function(comment){
         return comment.toJSONFor(user);
       })});
     });
@@ -245,28 +250,28 @@ router.get('/:article/comments', auth.optional, function(req, res, next){
 });
 
 // create a new comment
-router.post('/:article/comments', auth.required, function(req, res, next) {
+router.post('/:campaign/comments', auth.required, function(req, res, next) {
   User.findById(req.payload.id).then(function(user){
     if(!user){ return res.sendStatus(401); }
 
     var comment = new Comment(req.body.comment);
-    comment.article = req.article;
+    comment.campaign = req.campaign;
     comment.author = user;
 
     return comment.save().then(function(){
-      req.article.comments.push(comment);
+      req.campaign.comments.push(comment);
 
-      return req.article.save().then(function(article) {
+      return req.campaign.save().then(function(campaign) {
         res.json({comment: comment.toJSONFor(user)});
       });
     });
   }).catch(next);
 });
 
-router.delete('/:article/comments/:comment', auth.required, function(req, res, next) {
+router.delete('/:campaign/comments/:comment', auth.required, function(req, res, next) {
   if(req.comment.author.toString() === req.payload.id.toString()){
-    req.article.comments.remove(req.comment._id);
-    req.article.save()
+    req.campaign.comments.remove(req.comment._id);
+    req.campaign.save()
       .then(Comment.find({_id: req.comment._id}).remove().exec())
       .then(function(){
         res.sendStatus(204);

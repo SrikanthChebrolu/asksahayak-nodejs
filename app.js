@@ -38,7 +38,7 @@ if(isProduction){
 }
 
 require('./models/User');
-require('./models/Article');
+require('./models/Campaign');
 require('./models/Comment');
 require('./config/passport');
 
