@@ -82,5 +82,5 @@ app.use(function(err, req, res, next) {
 
 // finally, let's start our server...
 var server = app.listen( PORT, function(){
-  console.log('Listening on port ' + server.address().port);
+    console.log("Express server listening on port %d in %s mode", this.address().port, app.settings.env);
 });
