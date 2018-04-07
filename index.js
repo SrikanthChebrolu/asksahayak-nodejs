@@ -33,7 +33,8 @@ if (!isProduction) {
 }
 
 if(isProduction){
-  mongoose.connect(process.env.MONGODB_URI);
+    mongoose.connect('mongodb://srikanthchebrolu:Ravi33lak%@ds119059.mlab.com:19059/asksahayak');
+    mongoose.set('debug', true);
 } else {
   mongoose.connect('mongodb://srikanthchebrolu:Ravi33lak%@ds119059.mlab.com:19059/asksahayak');
   mongoose.set('debug', true);
